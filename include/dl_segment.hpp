@@ -1,29 +1,39 @@
 #ifndef DL_SEGMENT_HPP
 #define DL_SEGMENT_HPP
 
+#include "dl_base.hpp"
+
 using namespace std;
 
 
-// 部署模型基类
-class DeployModel {
+class SegResult : public BaseResult {
 public:
-    explicit DeployModel(const unordered_map<std::string, std::any>& cfg);
+    cv::Mat boxes;
+    vector<cv::Mat> masks;
 
-    virtual ~DeployModel();
+    SegResult(const cv::Mat& boxes, const vector<cv::Mat>& masks) : boxes(boxes), masks(masks) {
+    }
+};
 
-    tuple<cv::Mat, vector<cv::Mat>> operator()(
-        const cv::Mat& im0, float conf = 0.25, float iou = 0.7, int nm = 32);
 
-    tuple<cv::Mat, float, cv::Point2f> preprocess(const cv::Mat& img) const;
+// 部署模型基类
+class SegDeployModel : public BaseDeployModel {
+public:
+    explicit SegDeployModel(const unordered_map<string, any>& cfg);
+
+    ~SegDeployModel() override;
+
+    unique_ptr<BaseResult> operator()(const cv::Mat& im0) override;
+
+    [[nodiscard]] tuple<cv::Mat, float, cv::Point2f> preprocess(const cv::Mat& img) const;
 
     virtual vector<cv::Mat> inference(const cv::Mat& img) = 0;
 
-    tuple<cv::Mat, vector<cv::Mat>> postprocess(
-        const vector<cv::Mat>& preds, const cv::Mat& img, float conf, float iou, int nm = 32) const;
+    [[nodiscard]] tuple<cv::Mat, vector<cv::Mat>> postprocess(const vector<cv::Mat>& preds, const cv::Mat& img) const;
 
     void process_box(const cv::Mat& res) const;
 
-    static vector<cv::Mat> process_mask(const cv::Mat& protos, const cv::Mat& masks_coef, const cv::Mat& bboxes,
+    static vector<cv::Mat> process_mask(const cv::Mat& protos, const cv::Mat& masks_coef, const cv::Mat& boxes,
                                         const cv::Size& shape);
 
     static vector<cv::Mat> scale_mask(const vector<cv::Mat>& masks, const cv::Size& im0_shape);
@@ -37,6 +47,9 @@ protected:
     vector<string> classes;
     int model_w;
     int model_h;
+    int nm;
+    float conf;
+    float iou;
     int img_w{};
     int img_h{};
     float scale_r{};
@@ -46,11 +59,11 @@ protected:
 
 
 // TensorRT 模型类
-class TensorRtModel final : public DeployModel {
+class SegTensorRtModel final : public SegDeployModel {
 public:
-    explicit TensorRtModel(const unordered_map<string, any>& cfg);
+    explicit SegTensorRtModel(const unordered_map<string, any>& cfg);
 
-    ~TensorRtModel() override;
+    ~SegTensorRtModel() override;
 
     vector<cv::Mat> inference(const cv::Mat& img) override;
 

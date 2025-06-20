@@ -1,13 +1,21 @@
-#include <iostream>
-#include <vector>
-#include <string>
-#include <opencv2/opencv.hpp>
-#include <onnxruntime_cxx_api.h>
-#include <filesystem>
-#include <numeric>
-
 #include "../include/tools.hpp"
 
+
+void Tools::save_image(const string& root, const string& name, const cv::Mat& image, const bool flag) {
+    if (flag) {
+        fs::create_directories(root);
+        cv::imwrite(root + "/" + name, image);
+    }
+}
+
+void Tools::adaptive_show(const cv::Mat& img, const bool resize_window) {
+    cv::namedWindow("eu_box", cv::WINDOW_NORMAL);
+    if (resize_window) {
+        cv::resizeWindow("eu_box", 1280, 960);
+    }
+    cv::imshow("eu_box", img);
+    cv::waitKey();
+}
 
 cv::Mat Tools::transpose(const cv::Mat& input, const vector<int>& newOrder) {
     /*
@@ -69,13 +77,4 @@ vector<cv::Mat> Tools::matHWN2NHWvec(const cv::Mat& input) {
         }
     }
     return dst;
-}
-
-void Tools::adaptive_show(const cv::Mat& img, const bool resize_window) {
-    cv::namedWindow("eu_box", cv::WINDOW_NORMAL);
-    if (resize_window) {
-        cv::resizeWindow("eu_box", 1280, 960);
-    }
-    cv::imshow("eu_box", img);
-    cv::waitKey();
 }

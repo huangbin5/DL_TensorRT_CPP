@@ -19,16 +19,18 @@
 namespace fs = filesystem;
 
 
-DeployModel::DeployModel(const unordered_map<string, any>& cfg)
+SegDeployModel::SegDeployModel(const unordered_map<string, any>& cfg)
     : classes(any_cast<vector<string>>(cfg.at("classes"))),
       model_w(any_cast<int>(cfg.at("model_w"))),
-      model_h(any_cast<int>(cfg.at("model_h"))) {
+      model_h(any_cast<int>(cfg.at("model_h"))),
+      nm(any_cast<int>(cfg.at("nm"))),
+      conf(any_cast<float>(cfg.at("conf"))),
+      iou(any_cast<float>(cfg.at("iou"))) {
 }
 
-DeployModel::~DeployModel() = default;
+SegDeployModel::~SegDeployModel() = default;
 
-tuple<cv::Mat, vector<cv::Mat>> DeployModel::operator()(
-    const cv::Mat& im0, const float conf, const float iou, const int nm) {
+unique_ptr<BaseResult> SegDeployModel::operator()(const cv::Mat& im0) {
     img_h = im0.rows, img_w = im0.cols;
     auto [img, r, pad] = preprocess(im0);
     scale_r = r, pad_w = pad.x, pad_h = pad.y;
@@ -38,11 +40,11 @@ tuple<cv::Mat, vector<cv::Mat>> DeployModel::operator()(
     const auto preds = inference(img);
     const chrono::duration<double> elapsed = chrono::high_resolution_clock::now() - start_time;
     cout << deploy_name << " 推理时间：" << elapsed.count() << "s\n";
-    auto [boxes, masks] = postprocess(preds, im0, conf, iou, nm);
-    return {boxes, masks};
+    auto [boxes, masks] = postprocess(preds, im0);
+    return make_unique<SegResult>(boxes, masks);
 }
 
-[[nodiscard]] tuple<cv::Mat, float, cv::Point2f> DeployModel::preprocess(const cv::Mat& img) const {
+[[nodiscard]] tuple<cv::Mat, float, cv::Point2f> SegDeployModel::preprocess(const cv::Mat& img) const {
     const cv::Size shape(img.cols, img.rows);
     const cv::Size new_shape(model_w, model_h);
     float r = min(static_cast<float>(new_shape.height) / static_cast<float>(shape.height),
@@ -79,12 +81,8 @@ tuple<cv::Mat, vector<cv::Mat>> DeployModel::operator()(
  * res.shape = (37, 33600)
  * protos.shape = (32, 320, 320)
  */
-[[nodiscard]] tuple<cv::Mat, vector<cv::Mat>> DeployModel::postprocess(
-    const vector<cv::Mat>& preds, const cv::Mat& img, float conf, float iou, int nm) const {
-    /*
-    res.shape = (37, 33600)
-    protos.shape = (32, 320, 320)
-     */
+[[nodiscard]] tuple<cv::Mat, vector<cv::Mat>> SegDeployModel::postprocess(
+    const vector<cv::Mat>& preds, const cv::Mat& img) const {
     cv::Mat res = preds[0].clone();
     cv::Mat protos = preds[1].clone();
     // (37, 33600) -> (33600, 37)  4边界框(xc, yc, w, h) + 1类别 + 32掩膜系数
@@ -143,12 +141,13 @@ tuple<cv::Mat, vector<cv::Mat>> DeployModel::operator()(
         protos, final_res.colRange(final_res.cols - nm, final_res.cols),
         final_res.colRange(0, 4), img.size()
     );
+    // 暂时用不上
     // vector<cv::Mat> segments = masks2segments(masks);
     // return {final_res.colRange(0, 6), masks, segments};
     return {final_res.colRange(0, 6), masks};
 }
 
-void DeployModel::process_box(const cv::Mat& res) const {
+void SegDeployModel::process_box(const cv::Mat& res) const {
     res.col(0) -= res.col(2) / 2;
     res.col(1) -= res.col(3) / 2;
     res.col(2) += res.col(0);
@@ -168,14 +167,13 @@ void DeployModel::process_box(const cv::Mat& res) const {
 }
 
 /**
- *
  * @param protos (32, 320, 320)
  * @param masks_coef (2, 32)
- * @param bboxes (2, 4)
+ * @param boxes (2, 4)
  * @param shape (1536, 2048, 3)
  */
-vector<cv::Mat> DeployModel::process_mask(const cv::Mat& protos, const cv::Mat& masks_coef, const cv::Mat& bboxes,
-                                          const cv::Size& shape) {
+vector<cv::Mat> SegDeployModel::process_mask(const cv::Mat& protos, const cv::Mat& masks_coef, const cv::Mat& boxes,
+                                             const cv::Size& shape) {
     const int c = protos.size[0], mh = protos.size[1], mw = protos.size[2]; // 多维数组不能用 rows 和 cols，会直接返回 -1
     // (320, 320, 2) 根据模板生成掩膜
     cv::Mat masks;
@@ -193,7 +191,7 @@ vector<cv::Mat> DeployModel::process_mask(const cv::Mat& protos, const cv::Mat& 
         memcpy(vec_masks[k].ptr(), masks.ptr(k), vec_masks[k].total() * CV_ELEM_SIZE(masks.type()));
     }
     vec_masks = scale_mask(vec_masks, shape);
-    vec_masks = crop_mask(vec_masks, bboxes);
+    vec_masks = crop_mask(vec_masks, boxes);
     for (auto& mask : vec_masks) {
         cv::threshold(mask, mask, 0.5, 1, cv::THRESH_BINARY);
     }
@@ -205,7 +203,7 @@ vector<cv::Mat> DeployModel::process_mask(const cv::Mat& protos, const cv::Mat& 
  * @param masks 2 * (320, 320)
  * @param im0_shape (1536, 2048, 3)
  */
-vector<cv::Mat> DeployModel::scale_mask(const vector<cv::Mat>& masks, const cv::Size& im0_shape) {
+vector<cv::Mat> SegDeployModel::scale_mask(const vector<cv::Mat>& masks, const cv::Size& im0_shape) {
     const auto height = masks[0].size[0], width = masks[0].size[1];
     const float r = min(height * 1.0 / im0_shape.height, width * 1.0 / im0_shape.width);
     const float pad_h = (height - im0_shape.height * r) / 2;
@@ -229,7 +227,7 @@ vector<cv::Mat> DeployModel::scale_mask(const vector<cv::Mat>& masks, const cv::
  * @param masks (2, 1536, 2048)
  * @param boxes (2, 4)
  */
-vector<cv::Mat> DeployModel::crop_mask(const vector<cv::Mat>& masks, const cv::Mat& boxes) {
+vector<cv::Mat> SegDeployModel::crop_mask(const vector<cv::Mat>& masks, const cv::Mat& boxes) {
     // cout << boxes << endl;
     const int n = masks.size();
     const int h = masks[0].size[0], w = masks[0].size[1];
@@ -248,7 +246,7 @@ vector<cv::Mat> DeployModel::crop_mask(const vector<cv::Mat>& masks, const cv::M
  * @param masks (2, 1536, 2048)
  * @return
  */
-vector<cv::Mat> DeployModel::masks2segments(const vector<cv::Mat>& masks) {
+vector<cv::Mat> SegDeployModel::masks2segments(const vector<cv::Mat>& masks) {
     vector<cv::Mat> segments_list;
     for (const auto& k : masks) {
         cv::Mat mask = k.clone();
@@ -281,13 +279,13 @@ vector<cv::Mat> DeployModel::masks2segments(const vector<cv::Mat>& masks) {
 }
 
 
-struct TensorRtModel::Binding {
+struct SegTensorRtModel::Binding {
     void* host;
     void* device;
     size_t size;
 };
 
-class TensorRtModel::Logger final : public nvinfer1::ILogger {
+class SegTensorRtModel::Logger final : public nvinfer1::ILogger {
 public:
     void log(const Severity severity, const char* msg) noexcept override {
         // 忽略 INFO 以下级别的日志
@@ -297,7 +295,8 @@ public:
     }
 };
 
-TensorRtModel::TensorRtModel(const unordered_map<string, any>& cfg) : DeployModel(cfg), logger(make_unique<Logger>()) {
+SegTensorRtModel::SegTensorRtModel(const unordered_map<string, any>& cfg) : SegDeployModel(cfg),
+                                                                            logger(make_unique<Logger>()) {
     deploy_name = "tensorrt";
     input_name = "images";
     output_names = {"output0", "output1"};
@@ -350,7 +349,7 @@ TensorRtModel::TensorRtModel(const unordered_map<string, any>& cfg) : DeployMode
     cudaStreamCreate(&stream);
 }
 
-TensorRtModel::~TensorRtModel() {
+SegTensorRtModel::~SegTensorRtModel() {
     for (auto& [name, addr] : bindings) {
         cudaFreeHost(addr->host);
         cudaFree(addr->device);
@@ -364,7 +363,7 @@ TensorRtModel::~TensorRtModel() {
  * @param img (1, 3, 1280, 1280)
  * @return ((37, 33600), (32, 320, 320))
  */
-vector<cv::Mat> TensorRtModel::inference(const cv::Mat& img) {
+vector<cv::Mat> SegTensorRtModel::inference(const cv::Mat& img) {
     const auto input = bindings[input_name];
     const auto output0 = bindings[output_names[0]];
     const auto output1 = bindings[output_names[1]];
@@ -382,12 +381,23 @@ vector<cv::Mat> TensorRtModel::inference(const cv::Mat& img) {
 }
 
 
-// 掩码生成器类
-class MaskGenerator {
+// 推理类
+class Infer {
 public:
-    explicit MaskGenerator(const unordered_map<string, any>& cfg)
-        : _classes(any_cast<vector<string>>(cfg.at("classes"))) {
-        _model = make_unique<TensorRtModel>(cfg);
+    explicit Infer(const unordered_map<string, any>& cfg, const string& exp_root = "",
+                   const bool save_mask = true, const bool save_box = false,
+                   const bool save_conf = true, const bool show_result = false)
+        : _model(make_unique<SegTensorRtModel>(cfg)),
+          _classes(any_cast<vector<string>>(cfg.at("classes"))),
+          _exp_root(exp_root),
+          _save_mask(save_mask),
+          _save_box(save_box),
+          _save_conf(save_conf),
+          _show_result(show_result) {
+        if (!exp_root.empty()) {
+            save_root = exp_root + "/arun";
+        }
+        _colors = {{0, 255, 0}, {0, 0, 255}, {0, 255, 255}, {255, 0, 0}, {255, 0, 255}};
     }
 
     /*
@@ -404,7 +414,10 @@ public:
         boxes: (m, 6) (y1, x1, y2, x2, conf, cls)
         masks: (m, h, w)
          */
-        auto [boxes, masks] = (*_model)(bgr_image);
+        const auto uni_ptr = (*_model)(bgr_image);
+        const auto results = static_cast<SegResult*>(uni_ptr.get());
+        const auto boxes = results->boxes;
+        const auto masks = results->masks;
 
         vector<vector<cv::Mat>> masks_per_label(_classes.size());
         vector<vector<cv::Rect2f>> boxes_per_label(_classes.size());
@@ -446,46 +459,15 @@ public:
         return {masks_per_label, boxes_per_label, confs_per_label};
     }
 
-private:
-    vector<string> _classes;
-    unique_ptr<DeployModel> _model;
-};
-
-
-// 推理类
-class Infer {
-public:
-    explicit Infer(const unordered_map<string, any>& cfg, const string& exp_root = "",
-                   const bool save_mask = true, const bool save_box = false,
-                   const bool save_conf = true, const bool show_result = false)
-        : exp_root(exp_root),
-          save_mask(save_mask),
-          save_box(save_box),
-          save_conf(save_conf),
-          show_result(show_result) {
-        generator = make_unique<MaskGenerator>(cfg);
-        if (!exp_root.empty()) {
-            save_root = exp_root + "/arun";
-        }
-        colors = {{0, 255, 0}, {0, 0, 255}, {0, 255, 255}, {255, 0, 0}, {255, 0, 255}};
-    }
-
-    static void _save_image(const string& root, const string& name, const cv::Mat& image, const bool flag = true) {
-        if (flag) {
-            fs::create_directories(root);
-            cv::imwrite(root + "/" + name, image);
-        }
-    }
-
     bool infer_single(const string& img_name) {
-        if (exp_root.empty()) {
+        if (_exp_root.empty()) {
             throw runtime_error("推理数据的目录不能为空");
         }
         cout << "filename: " << img_name << " ";
-        cv::Mat bgr_image = cv::imread(exp_root + "/" + img_name);
+        cv::Mat bgr_image = cv::imread(_exp_root + "/" + img_name);
         int bgr_h = bgr_image.rows, bgr_w = bgr_image.cols;
         auto [masks_per_label, boxes_per_label,
-            confs_per_label] = generator->get_mask(bgr_image);
+            confs_per_label] = get_mask(bgr_image);
 
         cv::Mat result_image = bgr_image.clone();
         cv::Mat mask_binary = cv::Mat::zeros(bgr_h, bgr_w, CV_8U);
@@ -508,9 +490,9 @@ public:
                     for (int j = 0; j < result_image.cols; ++j) {
                         if (row_mask[j] == 255) {
                             cv::Vec3b& pixel = row_img[j];
-                            pixel[0] = cv::saturate_cast<uchar>(pixel[0] * 0.7 + colors[k][0] * 0.3);
-                            pixel[1] = cv::saturate_cast<uchar>(pixel[1] * 0.7 + colors[k][1] * 0.3);
-                            pixel[2] = cv::saturate_cast<uchar>(pixel[2] * 0.7 + colors[k][2] * 0.3);
+                            pixel[0] = cv::saturate_cast<uchar>(pixel[0] * 0.7 + _colors[k][0] * 0.3);
+                            pixel[1] = cv::saturate_cast<uchar>(pixel[1] * 0.7 + _colors[k][1] * 0.3);
+                            pixel[2] = cv::saturate_cast<uchar>(pixel[2] * 0.7 + _colors[k][2] * 0.3);
                         }
                     }
                 }
@@ -520,20 +502,20 @@ public:
                 auto inner_box = cv::Rect2f(box.x + border, box.y + border,
                                             box.width - 2 * border, box.height - 2 * border);
                 box_binary(inner_box).setTo(0);
-                if (save_conf) {
+                if (_save_conf) {
                     cv::putText(result_image, cv::format("%.2f", confs[k]),
                                 cv::Point(box.x + box.width / 2 - 30, box.y + box.height / 2 + 15),
                                 cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(255, 0, 255), 2);
                 }
             }
-            _save_image(save_root + "/result", fs::path(img_name).stem().string() + "_result.png", result_image);
-            _save_image(save_root, fs::path(img_name).stem().string() + "_masks.png", mask_binary, save_mask);
-            _save_image(save_root, fs::path(img_name).stem().string() + "_boxes.png", box_binary, save_box);
+            Tools::save_image(save_root + "/result", fs::path(img_name).stem().string() + "_result.png", result_image);
+            Tools::save_image(save_root, fs::path(img_name).stem().string() + "_masks.png", mask_binary, _save_mask);
+            Tools::save_image(save_root, fs::path(img_name).stem().string() + "_boxes.png", box_binary, _save_box);
         } else {
-            _save_image(save_root + "/result", fs::path(img_name).stem().string() + "_result.png", bgr_image);
-            _save_image(save_root + "/failed", img_name, bgr_image);
+            Tools::save_image(save_root + "/result", fs::path(img_name).stem().string() + "_result.png", bgr_image);
+            Tools::save_image(save_root + "/failed", img_name, bgr_image);
         }
-        if (show_result) {
+        if (_show_result) {
             Tools::adaptive_show(result_image);
         }
         return !masks.empty();
@@ -541,7 +523,7 @@ public:
 
     void infer_batch() {
         vector<string> rgb_files;
-        for (const auto& entry : fs::directory_iterator(exp_root)) {
+        for (const auto& entry : fs::directory_iterator(_exp_root)) {
             if (const string file = entry.path().filename().string(); file.ends_with(".png")) {
                 rgb_files.push_back(file);
             }
@@ -559,23 +541,27 @@ public:
     }
 
 private:
-    unique_ptr<MaskGenerator> generator;
-    string exp_root;
+    unique_ptr<SegDeployModel> _model;
+    vector<string> _classes;
+    string _exp_root;
     string save_root;
-    vector<cv::Scalar> colors;
-    bool save_mask;
-    bool save_box;
-    bool save_conf;
-    bool show_result;
+    vector<cv::Scalar> _colors;
+    bool _save_mask;
+    bool _save_box;
+    bool _save_conf;
+    bool _show_result;
 };
 
 
 int main() {
     const unordered_map<string, any> config = {
-        {"classes", vector<string>{"eu_box"}},
         {"model_path", string("/home/oyefish/data/eu_box_exp/exp03_0403_lvl/train6/weights/best.engine")},
+        {"classes", vector<string>{"eu_box"}},
         {"model_w", 1280},
-        {"model_h", 1280}
+        {"model_h", 1280},
+        {"nm", 32},
+        {"conf", 0.25f},
+        {"iou", 0.7f},
     };
     Infer model(config,
                 "/home/oyefish/data/eu_box/0324_test",
