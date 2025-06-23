@@ -12,6 +12,8 @@ namespace fs = filesystem;
 
 class Tools {
 public:
+    static bool check_gpu();
+
     static void adaptive_show(const cv::Mat& img, bool resize_window = true);
 
     static void save_image(const string& root, const string& name, const cv::Mat& image, bool flag = true);

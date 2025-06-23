@@ -1,11 +1,8 @@
 #include "../include/tools.hpp"
 
 
-void Tools::save_image(const string& root, const string& name, const cv::Mat& image, const bool flag) {
-    if (flag) {
-        fs::create_directories(root);
-        cv::imwrite(root + "/" + name, image);
-    }
+bool Tools::check_gpu() {
+    return true;
 }
 
 void Tools::adaptive_show(const cv::Mat& img, const bool resize_window) {
@@ -15,6 +12,13 @@ void Tools::adaptive_show(const cv::Mat& img, const bool resize_window) {
     }
     cv::imshow("eu_box", img);
     cv::waitKey();
+}
+
+void Tools::save_image(const string& root, const string& name, const cv::Mat& image, const bool flag) {
+    if (flag) {
+        fs::create_directories(root);
+        cv::imwrite(root + "/" + name, image);
+    }
 }
 
 cv::Mat Tools::transpose(const cv::Mat& input, const vector<int>& newOrder) {

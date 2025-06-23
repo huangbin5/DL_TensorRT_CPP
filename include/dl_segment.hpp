@@ -1,6 +1,14 @@
 #ifndef DL_SEGMENT_HPP
 #define DL_SEGMENT_HPP
 
+#include <iostream>
+#include <vector>
+#include <string>
+#include <algorithm>
+#include <opencv2/opencv.hpp>
+#include <cuda_runtime.h>
+#include <NvInfer.h>
+
 #include "dl_base.hpp"
 
 using namespace std;
@@ -19,7 +27,9 @@ public:
 // 部署模型基类
 class SegDeployModel : public BaseDeployModel {
 public:
-    explicit SegDeployModel(const unordered_map<string, any>& cfg);
+    static bool register_status;
+
+    explicit SegDeployModel(const CfgType& cfg);
 
     ~SegDeployModel() override;
 
@@ -61,7 +71,7 @@ protected:
 // TensorRT 模型类
 class SegTensorRtModel final : public SegDeployModel {
 public:
-    explicit SegTensorRtModel(const unordered_map<string, any>& cfg);
+    explicit SegTensorRtModel(const CfgType& cfg);
 
     ~SegTensorRtModel() override;
 

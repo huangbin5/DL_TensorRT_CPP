@@ -1,13 +1,20 @@
 #include "../include/dl_base.hpp"
 
 
-void BaseDeployModel::registerType(const AlgorithmType type, const CreateFunc func) {
-    registry[type] = func;
-}
-
-BaseDeployModel* BaseDeployModel::create(const AlgorithmType type) {
+unique_ptr<BaseDeployModel> BaseDeployModel::create(const AlgorithmType type, const CfgType& cfg) {
+    auto registry = getRegistry();
     if (const auto it = registry.find(type); it != registry.end()) {
-        return it->second();
+        return it->second(cfg);
     }
     return nullptr;
+}
+
+void BaseDeployModel::registerType(const AlgorithmType type, const CreateFunc& func) {
+    // 注意：使用 move 提高效率
+    getRegistry()[type] = move(func);
+}
+
+unordered_map<AlgorithmType, BaseDeployModel::CreateFunc>& BaseDeployModel::getRegistry() {
+    static unordered_map<AlgorithmType, CreateFunc> registry;
+    return registry;
 }
