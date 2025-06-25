@@ -1,5 +1,9 @@
 #include "../include/dl_base.hpp"
 
+bool BaseResult::extractSegResult(cv::Mat& boxes, vector<cv::Mat>& masks) const {
+    return false;
+}
+
 
 unique_ptr<BaseDeployModel> BaseDeployModel::create(const AlgorithmType type, const CfgType& cfg) {
     auto registry = getRegistry();

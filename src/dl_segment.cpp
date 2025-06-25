@@ -19,10 +19,19 @@
 namespace fs = filesystem;
 
 
+SegResult::SegResult(const cv::Mat& boxes, const vector<cv::Mat>& masks) : boxes(boxes), masks(masks) {
+}
+
+bool SegResult::extractSegResult(cv::Mat& boxes, vector<cv::Mat>& masks) const {
+    boxes = this->boxes;
+    masks = this->masks;
+    return true;
+}
+
 bool SegDeployModel::register_status = [] {
     // todo 判断是否有 GPU
     if (Tools::check_gpu()) {
-        registerType(DL_SEGMENT, [](CfgType cfg) { return make_unique<SegTensorRtModel>(cfg); });
+        registerType(AlgorithmType::DL_SEGMENT, [](CfgType cfg) { return make_unique<SegTensorRtModel>(cfg); });
     }
     return true;
 }();
@@ -303,8 +312,7 @@ public:
     }
 };
 
-SegTensorRtModel::SegTensorRtModel(const CfgType& cfg) : SegDeployModel(cfg),
-                                                         logger(make_unique<Logger>()) {
+SegTensorRtModel::SegTensorRtModel(const CfgType& cfg) : SegDeployModel(cfg), logger(make_unique<Logger>()) {
     deploy_name = "tensorrt";
     input_name = "images";
     output_names = {"output0", "output1"};

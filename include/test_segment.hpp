@@ -7,11 +7,14 @@
 #include <algorithm>
 #include <opencv2/opencv.hpp>
 
-#include "../include/dl_segment.hpp"
+#include "dl_base.hpp"
+
+using namespace std;
+
 
 class SegTest {
 public:
-    explicit SegTest(const CfgType& cfg, const string& exp_root = "", bool save_mask = true, bool save_box = false,
+    explicit SegTest(const unordered_map<string, any>& cfg, const string& exp_root = "", bool save_mask = true, bool save_box = false,
                      bool save_conf = true, bool show_result = false);
 
     tuple<vector<vector<cv::Mat>>, vector<vector<cv::Rect2f>>, vector<vector<float>>> get_mask(

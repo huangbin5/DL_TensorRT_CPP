@@ -6,19 +6,35 @@
 
 using namespace std;
 
+// 通过 EXPORT 标记的符号（类、函数、变量）会被添加到 DLL 的导出列表中
+// 允许外部程序通过 DLL 调用这些功能
+#if defined(_MSC_VER) // 比 ifdef 支持更复杂的表达式
+#define EXPORT __declspec(dllexport) // Windows
+#else
+#define EXPORT __attribute__((visibility("default"))) // Linux
+#endif
+
 
 using CfgType = unordered_map<string, any>;
-enum AlgorithmType {
+
+enum class AlgorithmType {
     DL_CLASSIFY = 0,
     DL_DETECT = 1,
     DL_SEGMENT = 2,
 };
 
-class BaseResult {
+
+// 推理结果类
+class EXPORT BaseResult {
+public:
+    virtual ~BaseResult() = default;
+
+    virtual bool extractSegResult(cv::Mat& boxes, vector<cv::Mat>& masks) const;
 };
 
 
-class BaseDeployModel {
+// 推理模型基类
+class EXPORT BaseDeployModel {
 public:
     virtual ~BaseDeployModel() = default;
 

@@ -14,13 +14,15 @@
 using namespace std;
 
 
-class SegResult : public BaseResult {
+class SegResult final : public BaseResult {
 public:
+    SegResult(const cv::Mat& boxes, const vector<cv::Mat>& masks);
+
+    bool extractSegResult(cv::Mat& boxes, vector<cv::Mat>& masks) const override;
+
+private:
     cv::Mat boxes;
     vector<cv::Mat> masks;
-
-    SegResult(const cv::Mat& boxes, const vector<cv::Mat>& masks) : boxes(boxes), masks(masks) {
-    }
 };
 
 

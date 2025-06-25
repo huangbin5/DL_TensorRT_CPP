@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.31)
 set(CMAKE_CXX_STANDARD 20)
-project(segment)
+project(DL_TensorRT_CPP)
 
 # 设置 CUDA 路径
 set(CUDA_DIR "/usr/local/cuda")
@@ -27,8 +27,11 @@ link_directories(
 
 # 需要将所有使用到的 cpp 文件添加进去
 add_executable(deep_learning
+        src/dl_base.cpp
         src/dl_segment.cpp
         src/tools.cpp
+        test/test_main.cpp
+        test/test_segment.cpp
 )
 # 链接OpenCV库
 target_link_libraries(deep_learning

@@ -3,11 +3,12 @@
 #include <vector>
 #include <string>
 #include <algorithm>
-#include <onnxruntime_cxx_api.h>
 #include <chrono>
+#include <unordered_map>
 
-#include "../include/dl_segment.hpp"
 #include "../include/test_segment.hpp"
+
+using namespace std;
 
 
 int main() {

@@ -10,13 +10,12 @@
 #include <numeric>
 
 #include "../include/tools.hpp"
-#include "../include/dl_segment.hpp"
 #include "../include/test_segment.hpp"
 
 
 SegTest::SegTest(const CfgType& cfg, const string& exp_root, const bool save_mask, const bool save_box,
                  const bool save_conf, const bool show_result)
-    : _model(BaseDeployModel::create(DL_SEGMENT, cfg)),
+    : _model(BaseDeployModel::create(AlgorithmType::DL_SEGMENT, cfg)),
       _classes(any_cast<vector<string>>(cfg.at("classes"))),
       _exp_root(exp_root),
       _save_mask(save_mask),
@@ -43,11 +42,10 @@ tuple<vector<vector<cv::Mat>>, vector<vector<cv::Rect2f>>, vector<vector<float>>
     boxes: (m, 6) (y1, x1, y2, x2, conf, cls)
     masks: (m, h, w)
      */
-    // 注意：这里必须分两个步骤得到 results，如果是一步的话，uni_ptr 是临时变量会被删除
-    const auto uni_ptr = (*_model)(bgr_image);
-    const auto results = static_cast<SegResult*>(uni_ptr.get());
-    const auto boxes = results->boxes;
-    const auto masks = results->masks;
+    const auto results = (*_model)(bgr_image);
+    cv::Mat boxes;
+    vector<cv::Mat> masks;
+    results->extractSegResult(boxes, masks);
 
     vector<vector<cv::Mat>> masks_per_label(_classes.size());
     vector<vector<cv::Rect2f>> boxes_per_label(_classes.size());
