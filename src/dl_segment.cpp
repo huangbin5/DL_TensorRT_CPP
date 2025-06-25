@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <opencv2/opencv.hpp>
 #include <cuda_runtime.h>
-#include <onnxruntime_cxx_api.h>
 #include <NvInfer.h>
 #include <any>
 #include <yaml-cpp/yaml.h>
@@ -13,8 +12,8 @@
 #include <chrono>
 #include <numeric>
 
-#include "../include/tools.hpp"
-#include "../include/dl_segment.hpp"
+#include "../private/tools.hpp"
+#include "../private/dl_segment.hpp"
 
 namespace fs = filesystem;
 

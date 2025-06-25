@@ -4,13 +4,12 @@
 #include <string>
 #include <algorithm>
 #include <opencv2/opencv.hpp>
-#include <onnxruntime_cxx_api.h>
 #include <any>
 #include <filesystem>
 #include <numeric>
 
-#include "../include/tools.hpp"
-#include "../include/test_segment.hpp"
+#include "../private/tools.hpp"
+#include "test_segment.hpp"
 
 
 SegTest::SegTest(const CfgType& cfg, const string& exp_root, const bool save_mask, const bool save_box,

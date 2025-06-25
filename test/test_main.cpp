@@ -6,7 +6,7 @@
 #include <chrono>
 #include <unordered_map>
 
-#include "../include/test_segment.hpp"
+#include "test_segment.hpp"
 
 using namespace std;
 

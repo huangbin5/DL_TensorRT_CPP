@@ -33,7 +33,7 @@ add_executable(deep_learning
         test/test_main.cpp
         test/test_segment.cpp
 )
-# 链接OpenCV库
+# 链接第三方库
 target_link_libraries(deep_learning
         ${OpenCV_LIBS}
         cudart         # CUDA运行时库
@@ -43,7 +43,7 @@ target_link_libraries(deep_learning
 )
 
 
-# 所有 cpp 文件不依赖其它自定义文件时可以批量使用
+# 所有 cpp 文件不依赖其它自定义文件时，可以这样批量使用
 #file(GLOB_RECURSE file_paths *.cpp)
 #foreach (file_path ${file_paths})
 #    get_filename_component(file_name ${file_path} NAME_WE)

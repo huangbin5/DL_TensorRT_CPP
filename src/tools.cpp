@@ -1,4 +1,4 @@
-#include "../include/tools.hpp"
+#include "../private/tools.hpp"
 
 
 bool Tools::check_gpu() {

@@ -9,7 +9,7 @@
 #include <cuda_runtime.h>
 #include <NvInfer.h>
 
-#include "dl_base.hpp"
+#include "../include/dl_base.hpp"
 
 using namespace std;
 
