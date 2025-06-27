@@ -14,8 +14,7 @@ unique_ptr<BaseDeployModel> BaseDeployModel::create(const AlgorithmType type, co
 }
 
 void BaseDeployModel::registerType(const AlgorithmType type, const CreateFunc& func) {
-    // 注意：使用 move 提高效率
-    getRegistry()[type] = move(func);
+    getRegistry()[type] = func;
 }
 
 unordered_map<AlgorithmType, BaseDeployModel::CreateFunc>& BaseDeployModel::getRegistry() {

@@ -16,7 +16,7 @@ using namespace std;
 
 class SegResult final : public BaseResult {
 public:
-    SegResult(const cv::Mat& boxes, const vector<cv::Mat>& masks);
+    SegResult(cv::Mat boxes, const vector<cv::Mat>& masks);
 
     bool extractSegResult(cv::Mat& boxes, vector<cv::Mat>& masks) const override;
 
@@ -29,8 +29,6 @@ private:
 // 部署模型基类
 class SegDeployModel : public BaseDeployModel {
 public:
-    static bool register_status;
-
     explicit SegDeployModel(const CfgType& cfg);
 
     ~SegDeployModel() override;
@@ -67,6 +65,10 @@ protected:
     float scale_r{};
     float pad_w{};
     float pad_h{};
+
+private:
+    auto algorithm_type = AlgorithmType::DL_SEGMENT;
+    static bool register_status;
 };
 
 

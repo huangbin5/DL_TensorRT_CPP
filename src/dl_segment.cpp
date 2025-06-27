@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <utility>
 #include <vector>
 #include <string>
 #include <algorithm>
@@ -18,7 +19,7 @@
 namespace fs = filesystem;
 
 
-SegResult::SegResult(const cv::Mat& boxes, const vector<cv::Mat>& masks) : boxes(boxes), masks(masks) {
+SegResult::SegResult(cv::Mat  boxes, const vector<cv::Mat>& masks) : boxes(move(boxes)), masks(masks) {
 }
 
 bool SegResult::extractSegResult(cv::Mat& boxes, vector<cv::Mat>& masks) const {
@@ -30,7 +31,7 @@ bool SegResult::extractSegResult(cv::Mat& boxes, vector<cv::Mat>& masks) const {
 bool SegDeployModel::register_status = [] {
     // todo 判断是否有 GPU
     if (Tools::check_gpu()) {
-        registerType(AlgorithmType::DL_SEGMENT, [](CfgType cfg) { return make_unique<SegTensorRtModel>(cfg); });
+        registerType(algorithm_type, [](const CfgType& cfg) { return make_unique<SegTensorRtModel>(cfg); });
     }
     return true;
 }();
@@ -55,7 +56,7 @@ unique_ptr<BaseResult> SegDeployModel::operator()(const cv::Mat& im0) {
     // output: ((37, 33600), (32, 320, 320))
     const auto preds = inference(img);
     const chrono::duration<double> elapsed = chrono::high_resolution_clock::now() - start_time;
-    cout << deploy_name << " 推理时间：" << elapsed.count() << "s\n";
+    cout << deploy_name << " 推理时间：" << elapsed.count() * 1000 << "ms\n";
     auto [boxes, masks] = postprocess(preds, im0);
     return make_unique<SegResult>(boxes, masks);
 }
