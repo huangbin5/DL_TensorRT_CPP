@@ -1,0 +1,28 @@
+[
+    {
+        "name": "model_path",
+        "value": "/home/oyefish/data/eu_box_exp/exp03_0403_lvl/train6/weights/best.engine"
+    },
+    {
+        "name": "classes",
+        "value": [
+            "eu_box"
+        ]
+    },
+    {
+        "name": "model_w",
+        "value": 1280
+    },
+    {
+        "name": "model_h",
+        "value": 1280
+    },
+    {
+        "name": "conf",
+        "value": 0.25
+    },
+    {
+        "name": "iou",
+        "value": 0.7
+    }
+]

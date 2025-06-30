@@ -11,18 +11,18 @@
 
 #include "../include/dl_base.hpp"
 
-using namespace std;
+namespace fs = std::filesystem;
 
 
 class SegResult final : public BaseResult {
 public:
-    SegResult(cv::Mat boxes, const vector<cv::Mat>& masks);
+    SegResult(cv::Mat boxes, const std::vector<cv::Mat>& masks);
 
-    bool extractSegResult(cv::Mat& boxes, vector<cv::Mat>& masks) const override;
+    bool extractSegResult(cv::Mat& boxes, std::vector<cv::Mat>& masks) const override;
 
 private:
     cv::Mat boxes;
-    vector<cv::Mat> masks;
+    std::vector<cv::Mat> masks;
 };
 
 
@@ -33,31 +33,32 @@ public:
 
     ~SegDeployModel() override;
 
-    unique_ptr<BaseResult> operator()(const cv::Mat& im0) override;
+    std::unique_ptr<BaseResult> operator()(const cv::Mat& im0) override;
 
-    [[nodiscard]] tuple<cv::Mat, float, cv::Point2f> preprocess(const cv::Mat& img) const;
+    [[nodiscard]] std::tuple<cv::Mat, float, cv::Point2f> preprocess(const cv::Mat& img) const;
 
-    virtual vector<cv::Mat> inference(const cv::Mat& img) = 0;
+    virtual std::vector<cv::Mat> inference(const cv::Mat& img) = 0;
 
-    [[nodiscard]] tuple<cv::Mat, vector<cv::Mat>> postprocess(const vector<cv::Mat>& preds, const cv::Mat& img) const;
+    [[nodiscard]] std::tuple<cv::Mat, std::vector<cv::Mat>> postprocess(const std::vector<cv::Mat>& preds,
+                                                                        const cv::Mat& img) const;
 
     void process_box(const cv::Mat& res) const;
 
-    static vector<cv::Mat> process_mask(const cv::Mat& protos, const cv::Mat& masks_coef, const cv::Mat& boxes,
-                                        const cv::Size& shape);
+    static std::vector<cv::Mat> process_mask(const cv::Mat& protos, const cv::Mat& masks_coef, const cv::Mat& boxes,
+                                             const cv::Size& shape);
 
-    static vector<cv::Mat> scale_mask(const vector<cv::Mat>& masks, const cv::Size& im0_shape);
+    static std::vector<cv::Mat> scale_mask(const std::vector<cv::Mat>& masks, const cv::Size& im0_shape);
 
-    static vector<cv::Mat> crop_mask(const vector<cv::Mat>& masks, const cv::Mat& boxes);
+    static std::vector<cv::Mat> crop_mask(const std::vector<cv::Mat>& masks, const cv::Mat& boxes);
 
-    static vector<cv::Mat> masks2segments(const vector<cv::Mat>& masks);
+    static std::vector<cv::Mat> masks2segments(const std::vector<cv::Mat>& masks);
 
 protected:
-    string deploy_name;
-    vector<string> classes;
+    std::string deploy_name;
+    std::vector<std::string> classes;
     int model_w;
     int model_h;
-    int nm;
+    int nm = 32;
     float conf;
     float iou;
     int img_w{};
@@ -67,7 +68,7 @@ protected:
     float pad_h{};
 
 private:
-    auto algorithm_type = AlgorithmType::DL_SEGMENT;
+    static AlgorithmType algorithm_type;
     static bool register_status;
 };
 
@@ -79,19 +80,19 @@ public:
 
     ~SegTensorRtModel() override;
 
-    vector<cv::Mat> inference(const cv::Mat& img) override;
+    std::vector<cv::Mat> inference(const cv::Mat& img) override;
 
 private:
     struct Binding;
 
     class Logger;
-    unique_ptr<Logger> logger;
+    std::unique_ptr<Logger> logger;
 
-    string input_name;
-    vector<string> output_names;
+    std::string input_name;
+    std::vector<std::string> output_names;
     nvinfer1::ICudaEngine* engine;
     nvinfer1::IExecutionContext* context;
-    unordered_map<string, Binding*> bindings;
+    std::unordered_map<std::string, Binding*> bindings;
     cudaStream_t stream{};
 };
 

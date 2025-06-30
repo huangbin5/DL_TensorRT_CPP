@@ -16,17 +16,17 @@
 #include "../private/tools.hpp"
 #include "../private/dl_segment.hpp"
 
-namespace fs = filesystem;
 
-
-SegResult::SegResult(cv::Mat  boxes, const vector<cv::Mat>& masks) : boxes(move(boxes)), masks(masks) {
+SegResult::SegResult(cv::Mat  boxes, const std::vector<cv::Mat>& masks) : boxes(std::move(boxes)), masks(masks) {
 }
 
-bool SegResult::extractSegResult(cv::Mat& boxes, vector<cv::Mat>& masks) const {
+bool SegResult::extractSegResult(cv::Mat& boxes, std::vector<cv::Mat>& masks) const {
     boxes = this->boxes;
     masks = this->masks;
     return true;
 }
+
+AlgorithmType SegDeployModel::algorithm_type = AlgorithmType::DL_SEGMENT;
 
 bool SegDeployModel::register_status = [] {
     // todo 判断是否有 GPU
@@ -37,35 +37,34 @@ bool SegDeployModel::register_status = [] {
 }();
 
 SegDeployModel::SegDeployModel(const CfgType& cfg)
-    : classes(any_cast<vector<string>>(cfg.at("classes"))),
+    : classes(any_cast<std::vector<std::string>>(cfg.at("classes"))),
       model_w(any_cast<int>(cfg.at("model_w"))),
       model_h(any_cast<int>(cfg.at("model_h"))),
-      nm(any_cast<int>(cfg.at("nm"))),
       conf(any_cast<float>(cfg.at("conf"))),
       iou(any_cast<float>(cfg.at("iou"))) {
 }
 
 SegDeployModel::~SegDeployModel() = default;
 
-unique_ptr<BaseResult> SegDeployModel::operator()(const cv::Mat& im0) {
+std::unique_ptr<BaseResult> SegDeployModel::operator()(const cv::Mat& im0) {
     img_h = im0.rows, img_w = im0.cols;
     auto [img, r, pad] = preprocess(im0);
     scale_r = r, pad_w = pad.x, pad_h = pad.y;
-    const auto start_time = chrono::high_resolution_clock::now();
+    const auto start_time = std::chrono::high_resolution_clock::now();
     // input: (1, 3, 1280, 1280)
     // output: ((37, 33600), (32, 320, 320))
     const auto preds = inference(img);
-    const chrono::duration<double> elapsed = chrono::high_resolution_clock::now() - start_time;
-    cout << deploy_name << " 推理时间：" << elapsed.count() * 1000 << "ms\n";
+    const std::chrono::duration<double> elapsed = std::chrono::high_resolution_clock::now() - start_time;
+    std::cout << deploy_name << " 推理时间：" << elapsed.count() * 1000 << "ms\n";
     auto [boxes, masks] = postprocess(preds, im0);
     return make_unique<SegResult>(boxes, masks);
 }
 
-[[nodiscard]] tuple<cv::Mat, float, cv::Point2f> SegDeployModel::preprocess(const cv::Mat& img) const {
+[[nodiscard]] std::tuple<cv::Mat, float, cv::Point2f> SegDeployModel::preprocess(const cv::Mat& img) const {
     const cv::Size shape(img.cols, img.rows);
     const cv::Size new_shape(model_w, model_h);
-    float r = min(static_cast<float>(new_shape.height) / static_cast<float>(shape.height),
-                  static_cast<float>(new_shape.width) / static_cast<float>(shape.width));
+    float r = std::min(static_cast<float>(new_shape.height) / static_cast<float>(shape.height),
+                       static_cast<float>(new_shape.width) / static_cast<float>(shape.width));
     const cv::Size unpad(
         static_cast<int>(round(static_cast<float>(shape.width) * r)),
         static_cast<int>(round(static_cast<float>(shape.height) * r))
@@ -98,8 +97,8 @@ unique_ptr<BaseResult> SegDeployModel::operator()(const cv::Mat& im0) {
  * res.shape = (37, 33600)
  * protos.shape = (32, 320, 320)
  */
-[[nodiscard]] tuple<cv::Mat, vector<cv::Mat>> SegDeployModel::postprocess(
-    const vector<cv::Mat>& preds, const cv::Mat& img) const {
+[[nodiscard]] std::tuple<cv::Mat, std::vector<cv::Mat>> SegDeployModel::postprocess(
+    const std::vector<cv::Mat>& preds, const cv::Mat& img) const {
     cv::Mat res = preds[0].clone();
     cv::Mat protos = preds[1].clone();
     // (37, 33600) -> (33600, 37)  4边界框(xc, yc, w, h) + 1类别 + 32掩膜系数
@@ -135,9 +134,9 @@ unique_ptr<BaseResult> SegDeployModel::operator()(const cv::Mat& im0) {
     }
 
     // (2, 38) 非极大值抑制过滤
-    vector<int> indices;
-    vector<cv::Rect2d> boxes;
-    vector<float> confidences;
+    std::vector<int> indices;
+    std::vector<cv::Rect2d> boxes;
+    std::vector<float> confidences;
     for (int i = 0; i < detail_res.rows; ++i) {
         cv::Vec4f box = detail_res.row(i).colRange(0, 4);
         boxes.emplace_back(box[0], box[1], box[2], box[3]); // 直接传递构造参数，效率更高
@@ -154,7 +153,7 @@ unique_ptr<BaseResult> SegDeployModel::operator()(const cv::Mat& im0) {
     }
 
     process_box(final_res);
-    vector<cv::Mat> masks = process_mask(
+    std::vector<cv::Mat> masks = process_mask(
         protos, final_res.colRange(final_res.cols - nm, final_res.cols),
         final_res.colRange(0, 4), img.size()
     );
@@ -189,8 +188,8 @@ void SegDeployModel::process_box(const cv::Mat& res) const {
  * @param boxes (2, 4)
  * @param shape (1536, 2048, 3)
  */
-vector<cv::Mat> SegDeployModel::process_mask(const cv::Mat& protos, const cv::Mat& masks_coef, const cv::Mat& boxes,
-                                             const cv::Size& shape) {
+std::vector<cv::Mat> SegDeployModel::process_mask(const cv::Mat& protos, const cv::Mat& masks_coef, const cv::Mat& boxes,
+                                                  const cv::Size& shape) {
     const int c = protos.size[0], mh = protos.size[1], mw = protos.size[2]; // 多维数组不能用 rows 和 cols，会直接返回 -1
     // (320, 320, 2) 根据模板生成掩膜
     cv::Mat masks;
@@ -200,7 +199,7 @@ vector<cv::Mat> SegDeployModel::process_mask(const cv::Mat& protos, const cv::Ma
     masks = masks.reshape(0, {masks_coef.rows, mh, mw});
 
     // 2 * (H, W)
-    vector<cv::Mat> vec_masks(masks.size[0]);
+    std::vector<cv::Mat> vec_masks(masks.size[0]);
     // 注意：以下初始化写法是错误的，Mat 的拷贝构造函数是浅拷贝，vec_masks 中所有元素都会指向同一个 Mat
     // vector vec_masks(masks.size[0], cv::Mat(masks.size[1], masks.size[2], masks.type()));
     for (int k = 0; k < vec_masks.size(); ++k) {
@@ -220,9 +219,9 @@ vector<cv::Mat> SegDeployModel::process_mask(const cv::Mat& protos, const cv::Ma
  * @param masks 2 * (320, 320)
  * @param im0_shape (1536, 2048, 3)
  */
-vector<cv::Mat> SegDeployModel::scale_mask(const vector<cv::Mat>& masks, const cv::Size& im0_shape) {
+std::vector<cv::Mat> SegDeployModel::scale_mask(const std::vector<cv::Mat>& masks, const cv::Size& im0_shape) {
     const auto height = masks[0].size[0], width = masks[0].size[1];
-    const float r = min(height * 1.0 / im0_shape.height, width * 1.0 / im0_shape.width);
+    const float r = std::min(height * 1.0 / im0_shape.height, width * 1.0 / im0_shape.width);
     const float pad_h = (height - im0_shape.height * r) / 2;
     const float pad_w = (width - im0_shape.width * r) / 2;
     const int top = static_cast<int>(round(pad_h - 0.1));
@@ -230,7 +229,7 @@ vector<cv::Mat> SegDeployModel::scale_mask(const vector<cv::Mat>& masks, const c
     const int bottom = static_cast<int>(round(height - pad_h + 0.1));
     const int right = static_cast<int>(round(width - pad_w + 0.1));
 
-    vector<cv::Mat> dst(masks.size());
+    std::vector<cv::Mat> dst(masks.size());
     for (int k = 0; k < masks.size(); ++k) {
         dst[k] = cv::Mat(height, width, masks[0].type());
         const cv::Mat cropped_masks = masks[k](cv::Rect(left, top, right - left, bottom - top));
@@ -244,11 +243,11 @@ vector<cv::Mat> SegDeployModel::scale_mask(const vector<cv::Mat>& masks, const c
  * @param masks (2, 1536, 2048)
  * @param boxes (2, 4)
  */
-vector<cv::Mat> SegDeployModel::crop_mask(const vector<cv::Mat>& masks, const cv::Mat& boxes) {
+std::vector<cv::Mat> SegDeployModel::crop_mask(const std::vector<cv::Mat>& masks, const cv::Mat& boxes) {
     // cout << boxes << endl;
     const int n = masks.size();
     const int h = masks[0].size[0], w = masks[0].size[1];
-    vector<cv::Mat> dst(n);
+    std::vector<cv::Mat> dst(n);
     for (int k = 0; k < n; ++k) {
         dst[k] = cv::Mat::zeros(h, w, masks[0].type());
         const auto row = boxes.ptr<float>(k);
@@ -263,12 +262,12 @@ vector<cv::Mat> SegDeployModel::crop_mask(const vector<cv::Mat>& masks, const cv
  * @param masks (2, 1536, 2048)
  * @return
  */
-vector<cv::Mat> SegDeployModel::masks2segments(const vector<cv::Mat>& masks) {
-    vector<cv::Mat> segments_list;
+std::vector<cv::Mat> SegDeployModel::masks2segments(const std::vector<cv::Mat>& masks) {
+    std::vector<cv::Mat> segments_list;
     for (const auto& k : masks) {
         cv::Mat mask = k.clone();
         mask.convertTo(mask, CV_8U);
-        vector<vector<cv::Point>> contours;
+        std::vector<std::vector<cv::Point>> contours;
         // RETR_EXTERNAL 只保留外边界
         cv::findContours(mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
         if (!contours.empty()) {
@@ -312,16 +311,16 @@ public:
     }
 };
 
-SegTensorRtModel::SegTensorRtModel(const CfgType& cfg) : SegDeployModel(cfg), logger(make_unique<Logger>()) {
+SegTensorRtModel::SegTensorRtModel(const CfgType& cfg) : SegDeployModel(cfg), logger(std::make_unique<Logger>()) {
     deploy_name = "tensorrt";
     input_name = "images";
     output_names = {"output0", "output1"};
 
-    // 读取序列化文件
-    auto tensorrt_path = any_cast<string>(cfg.at("model_path"));
-    ifstream file(tensorrt_path, ios::binary);
+    // 读取序列化文件 todo 将读取逻模型的辑提取为一个方法
+    auto tensorrt_path = any_cast<std::string>(cfg.at("model_path"));
+    std::ifstream file(tensorrt_path, std::ios::binary);
     if (!file) {
-        throw runtime_error("Failed to open TensorRT engine file");
+        throw std::runtime_error("Failed to open TensorRT engine file");
     }
 
     /*
@@ -331,15 +330,15 @@ SegTensorRtModel::SegTensorRtModel(const CfgType& cfg) : SegDeployModel(cfg), lo
     uint32_t meta_len;
     file.read(reinterpret_cast<char*>(&meta_len), sizeof(meta_len));
     // 跳过 Meta 数据
-    file.seekg(meta_len, ios::cur);
+    file.seekg(meta_len, std::ios::cur);
     size_t engine_data_start = file.tellg();
 
-    file.seekg(0, ios::end);
+    file.seekg(0, std::ios::end);
     size_t size = file.tellg();
     size -= engine_data_start;
     // 回到 engine 实际数据处
-    file.seekg(engine_data_start, ios::beg);
-    vector<char> engine_data(size);
+    file.seekg(engine_data_start, std::ios::beg);
+    std::vector<char> engine_data(size);
     file.read(engine_data.data(), size);
     file.close();
 
@@ -352,7 +351,7 @@ SegTensorRtModel::SegTensorRtModel(const CfgType& cfg) : SegDeployModel(cfg), lo
         auto name = engine->getIOTensorName(i);
         auto [nbDims, d] = engine->getTensorShape(name);
         // nvinfer1::DataType dtype = engine->getTensorDataType(name); // todo 先不使用 dtype，直接用 float
-        size_t p = accumulate(d, d + nbDims, 1, [](auto a, auto b) { return a * b; });
+        size_t p = std::accumulate(d, d + nbDims, 1, [](auto a, auto b) { return a * b; });
         // 分配锁页内存，避免被操作系统换出，提升DMA传输效率
         void* host_mem;
         cudaHostAlloc(&host_mem, p * sizeof(float), cudaHostAllocDefault);
@@ -379,7 +378,7 @@ SegTensorRtModel::~SegTensorRtModel() {
  * @param img (1, 3, 1280, 1280)
  * @return ((37, 33600), (32, 320, 320))
  */
-vector<cv::Mat> SegTensorRtModel::inference(const cv::Mat& img) {
+std::vector<cv::Mat> SegTensorRtModel::inference(const cv::Mat& img) {
     const auto input = bindings[input_name];
     const auto output0 = bindings[output_names[0]];
     const auto output1 = bindings[output_names[1]];

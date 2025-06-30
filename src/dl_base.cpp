@@ -1,11 +1,19 @@
 #include "../include/dl_base.hpp"
 
-bool BaseResult::extractSegResult(cv::Mat& boxes, vector<cv::Mat>& masks) const {
+bool BaseResult::extractSegResult(cv::Mat& boxes, std::vector<cv::Mat>& masks) const {
+    return false;
+}
+
+bool BaseResult::extractDetResult(cv::Mat& boxes) const {
+    return false;
+}
+
+bool BaseResult::extractClsResult(std::vector<float>& confs) const {
     return false;
 }
 
 
-unique_ptr<BaseDeployModel> BaseDeployModel::create(const AlgorithmType type, const CfgType& cfg) {
+std::unique_ptr<BaseDeployModel> BaseDeployModel::create(const AlgorithmType type, const CfgType& cfg) {
     auto registry = getRegistry();
     if (const auto it = registry.find(type); it != registry.end()) {
         return it->second(cfg);
@@ -17,7 +25,7 @@ void BaseDeployModel::registerType(const AlgorithmType type, const CreateFunc& f
     getRegistry()[type] = func;
 }
 
-unordered_map<AlgorithmType, BaseDeployModel::CreateFunc>& BaseDeployModel::getRegistry() {
-    static unordered_map<AlgorithmType, CreateFunc> registry;
+std::unordered_map<AlgorithmType, BaseDeployModel::CreateFunc>& BaseDeployModel::getRegistry() {
+    static std::unordered_map<AlgorithmType, CreateFunc> registry;
     return registry;
 }

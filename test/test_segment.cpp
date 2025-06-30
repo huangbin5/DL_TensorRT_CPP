@@ -12,10 +12,10 @@
 #include "test_segment.hpp"
 
 
-SegTest::SegTest(const CfgType& cfg, const string& exp_root, const bool save_mask, const bool save_box,
+SegTest::SegTest(const CfgType& cfg, const std::string& exp_root, const bool save_mask, const bool save_box,
                  const bool save_conf, const bool show_result)
     : _model(BaseDeployModel::create(AlgorithmType::DL_SEGMENT, cfg)),
-      _classes(any_cast<vector<string>>(cfg.at("classes"))),
+      _classes(any_cast<std::vector<std::string>>(cfg.at("classes"))),
       _exp_root(exp_root),
       _save_mask(save_mask),
       _save_box(save_box),
@@ -34,8 +34,8 @@ SegTest::SegTest(const CfgType& cfg, const string& exp_root, const bool save_mas
  * Return:
  *     masks_per_label: list[ndarray]. 每个类别的 mask 存储为一个 ndarray (m, h, w), 其中 m 为 mask 个数
  */
-tuple<vector<vector<cv::Mat>>, vector<vector<cv::Rect2f>>, vector<vector<float>>> SegTest::get_mask(
-    const cv::Mat& bgr_image) const {
+std::tuple<std::vector<std::vector<cv::Mat>>, std::vector<std::vector<cv::Rect2f>>, std::vector<std::vector<float>>>
+SegTest::get_mask(const cv::Mat& bgr_image) const {
     // 只测试 TensorRT
     /*
     boxes: (m, 6) (y1, x1, y2, x2, conf, cls)
@@ -43,18 +43,18 @@ tuple<vector<vector<cv::Mat>>, vector<vector<cv::Rect2f>>, vector<vector<float>>
      */
     const auto results = (*_model)(bgr_image);
     cv::Mat boxes;
-    vector<cv::Mat> masks;
+    std::vector<cv::Mat> masks;
     results->extractSegResult(boxes, masks);
 
-    vector<vector<cv::Mat>> masks_per_label(_classes.size());
-    vector<vector<cv::Rect2f>> boxes_per_label(_classes.size());
-    vector<vector<float>> confs_per_label(_classes.size());
+    std::vector<std::vector<cv::Mat>> masks_per_label(_classes.size());
+    std::vector<std::vector<cv::Rect2f>> boxes_per_label(_classes.size());
+    std::vector<std::vector<float>> confs_per_label(_classes.size());
     if (boxes.rows > 0) {
         // 将每个标签的物体分开
         for (size_t cls = 0; cls < _classes.size(); ++cls) {
-            vector<cv::Mat> class_masks;
-            vector<cv::Rect2f> class_boxes;
-            vector<float> class_confs;
+            std::vector<cv::Mat> class_masks;
+            std::vector<cv::Rect2f> class_boxes;
+            std::vector<float> class_confs;
             for (int i = 0; i < boxes.rows; ++i) {
                 if (boxes.at<float>(i, 5) == static_cast<float>(cls)) {
                     cv::Mat mask = masks[i].clone();
@@ -75,7 +75,7 @@ tuple<vector<vector<cv::Mat>>, vector<vector<cv::Rect2f>>, vector<vector<float>>
             confs_per_label[cls] = class_confs;
         }
     } else {
-        cerr << "未识别物料" << endl;
+        std::cerr << "未识别物料" << std::endl;
         for (size_t i = 0; i < _classes.size(); ++i) {
             masks_per_label[i] = {};
             boxes_per_label[i] = {};
@@ -86,11 +86,11 @@ tuple<vector<vector<cv::Mat>>, vector<vector<cv::Rect2f>>, vector<vector<float>>
     return {masks_per_label, boxes_per_label, confs_per_label};
 }
 
-bool SegTest::infer_single(const string& img_name) {
+bool SegTest::infer_single(const std::string& img_name) {
     if (_exp_root.empty()) {
-        throw runtime_error("推理数据的目录不能为空");
+        throw std::runtime_error("推理数据的目录不能为空");
     }
-    cout << "filename: " << img_name << " ";
+    std::cout << "filename: " << img_name << " ";
     cv::Mat bgr_image = cv::imread(_exp_root + "/" + img_name);
     int bgr_h = bgr_image.rows, bgr_w = bgr_image.cols;
     auto [masks_per_label, boxes_per_label,
@@ -100,9 +100,9 @@ bool SegTest::infer_single(const string& img_name) {
     cv::Mat mask_binary = cv::Mat::zeros(bgr_h, bgr_w, CV_8U);
     cv::Mat box_binary = cv::Mat::zeros(bgr_h, bgr_w, CV_8U);
     // EU 箱只有一个类别，未来再扩充到多个类别
-    vector<cv::Mat> masks = masks_per_label[0];
-    vector<cv::Rect2f> boxes = boxes_per_label[0];
-    vector<float> confs = confs_per_label[0];
+    std::vector<cv::Mat> masks = masks_per_label[0];
+    std::vector<cv::Rect2f> boxes = boxes_per_label[0];
+    std::vector<float> confs = confs_per_label[0];
 
     if (!masks.empty()) {
         // 需要整体的掩膜、边界框、置信度
@@ -149,20 +149,20 @@ bool SegTest::infer_single(const string& img_name) {
 }
 
 void SegTest::infer_batch() {
-    vector<string> rgb_files;
+    std::vector < std::string > rgb_files;
     for (const auto& entry : fs::directory_iterator(_exp_root)) {
-        if (const string file = entry.path().filename().string(); file.ends_with(".png")) {
+        if (const std::string file = entry.path().filename().string(); file.ends_with(".png")) {
             rgb_files.push_back(file);
         }
     }
-    sort(rgb_files.begin(), rgb_files.end());
+    std::sort(rgb_files.begin(), rgb_files.end());
 
     const int all_cnt = rgb_files.size();
     int failed = 0;
     for (auto i = 0; i < all_cnt; ++i) {
-        cout << "\n【Image " << i + 1 << '/' << all_cnt << "】\t";
+        std::cout << "\n【Image " << i + 1 << '/' << all_cnt << "】\t";
         failed += !infer_single(rgb_files[i]);
     }
-    cout << "\nsegment saved to " << save_root << endl;
-    cout << "failed " << failed << '/' << all_cnt << '=' << cv::format("%.2f", 100.0 * failed / all_cnt) << "%\n";
+    std::cout << "\nsegment saved to " << save_root << std::endl;
+    std::cout << "failed " << failed << '/' << all_cnt << '=' << cv::format("%.2f", 100.0 * failed / all_cnt) << "%\n";
 }
