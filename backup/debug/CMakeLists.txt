@@ -2,12 +2,20 @@ cmake_minimum_required(VERSION 3.16.3)
 set(CMAKE_CXX_STANDARD 20)
 project(DL_TensorRT_CPP)
 
-# 设置 CUDA 路径
-set(CUDA_DIR "/usr/local/cuda")
-# 设置 ONNX 路径
-set(OnnxRuntime_DIR "/home/oyefish/application/onnxruntime")
-# 设置 TensorRT 路径
-set(TensorRT_DIR "/home/oyefish/application/TensorRT")
+if (WIN32)
+    # 设置 OpenCV 路径
+    set(OpenCV_DIR "D:/software/opencv/build")
+    # 设置 CUDA 路径
+    set(CUDA_DIR "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8")
+    # 设置 ONNX 路径
+    set(OnnxRuntime_DIR "D:/software/onnxruntime-win-x64-gpu-1.22.0")
+    # 设置 TensorRT 路径
+    set(TensorRT_DIR "C:/Program Files/NVIDIA GPU Computing Toolkit/TensorRT-8.6.1.6")
+else ()
+    set(CUDA_DIR "/usr/local/cuda")
+    set(OnnxRuntime_DIR "/home/oyefish/application/onnxruntime")
+    set(TensorRT_DIR "/home/oyefish/application/TensorRT")
+endif ()
 # 查找OpenCV库
 find_package(OpenCV REQUIRED)
 
@@ -19,10 +27,18 @@ include_directories(
 )
 # 添加库文件目录
 link_directories(
-        ${CUDA_DIR}/lib64
         ${OnnxRuntime_DIR}/lib
         ${TensorRT_DIR}/lib
 )
+if (WIN32)
+    link_directories(
+            ${CUDA_DIR}/lib/x64
+    )
+else ()
+    link_directories(
+            ${CUDA_DIR}/lib64
+    )
+endif ()
 
 
 # 需要将所有使用到的 cpp 文件添加进去

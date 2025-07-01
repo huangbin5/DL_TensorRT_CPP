@@ -8,7 +8,6 @@
 #include <cuda_runtime.h>
 #include <NvInfer.h>
 #include <any>
-#include <yaml-cpp/yaml.h>
 #include <filesystem>
 #include <chrono>
 #include <numeric>
