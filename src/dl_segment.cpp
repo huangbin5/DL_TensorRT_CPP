@@ -17,7 +17,7 @@
 #include "../private/dl_segment.hpp"
 
 
-SegResult::SegResult(cv::Mat  boxes, const std::vector<cv::Mat>& masks) : boxes(std::move(boxes)), masks(masks) {
+SegResult::SegResult(cv::Mat boxes, const std::vector<cv::Mat>& masks) : boxes(std::move(boxes)), masks(masks) {
 }
 
 bool SegResult::extractSegResult(cv::Mat& boxes, std::vector<cv::Mat>& masks) const {
@@ -37,7 +37,7 @@ bool SegDeployModel::register_status = [] {
 }();
 
 SegDeployModel::SegDeployModel(const CfgType& cfg)
-    : classes(any_cast<std::vector<std::string>>(cfg.at("classes"))),
+    : classes(Tools::any_to_vector<std::string>(cfg.at("classes"))),
       model_w(any_cast<int>(cfg.at("model_w"))),
       model_h(any_cast<int>(cfg.at("model_h"))),
       conf(any_cast<float>(cfg.at("conf"))),
@@ -188,8 +188,8 @@ void SegDeployModel::process_box(const cv::Mat& res) const {
  * @param boxes (2, 4)
  * @param shape (1536, 2048, 3)
  */
-std::vector<cv::Mat> SegDeployModel::process_mask(const cv::Mat& protos, const cv::Mat& masks_coef, const cv::Mat& boxes,
-                                                  const cv::Size& shape) {
+std::vector<cv::Mat> SegDeployModel::process_mask(const cv::Mat& protos, const cv::Mat& masks_coef,
+                                                  const cv::Mat& boxes, const cv::Size& shape) {
     const int c = protos.size[0], mh = protos.size[1], mw = protos.size[2]; // 多维数组不能用 rows 和 cols，会直接返回 -1
     // (320, 320, 2) 根据模板生成掩膜
     cv::Mat masks;

@@ -15,7 +15,7 @@
 SegTest::SegTest(const CfgType& cfg, const std::string& exp_root, const bool save_mask, const bool save_box,
                  const bool save_conf, const bool show_result)
     : _model(BaseDeployModel::create(AlgorithmType::DL_SEGMENT, cfg)),
-      _classes(any_cast<std::vector<std::string>>(cfg.at("classes"))),
+      _classes(Tools::any_to_vector<std::string>(cfg.at("classes"))),
       _exp_root(exp_root),
       _save_mask(save_mask),
       _save_box(save_box),

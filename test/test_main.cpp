@@ -1,24 +1,24 @@
 #include <iostream>
 #include <fstream>
-#include <vector>
+// #include <vector>
 #include <string>
-#include <algorithm>
 #include <chrono>
 #include <unordered_map>
-#include <nlohmann/json.hpp>
 
+#include "../private/tools.hpp"
 #include "test_segment.hpp"
 
 
 int main() {
-    const CfgType config = {
-        {"model_path", std::string("/home/oyefish/data/eu_box_exp/exp03_0403_lvl/train6/weights/best.engine")},
-        {"classes", std::vector<std::string>{"eu_box"}},
-        {"model_w", 1280},
-        {"model_h", 1280},
-        {"conf", 0.25f},
-        {"iou", 0.7f},
-    };
+    // const CfgType config = {
+    //     {"model_path", std::string("/home/oyefish/data/eu_box_exp/exp03_0403_lvl/train6/weights/best.engine")},
+    //     {"classes", std::vector<std::string>{"eu_box"}},
+    //     {"model_w", 1280},
+    //     {"model_h", 1280},
+    //     {"conf", 0.25f},
+    //     {"iou", 0.7f},
+    // };
+    const auto config = Tools::parse_json_config("../config/segment.json");
     SegTest model(config,
                   "/home/oyefish/data/eu_box/0324_test",
                   true, true, true, false);

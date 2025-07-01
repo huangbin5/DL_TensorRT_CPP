@@ -1,5 +1,59 @@
+#include <nlohmann/json.hpp>
+#include <fstream>
+
 #include "../private/tools.hpp"
 
+using json = nlohmann::json;
+
+
+// 将 json 值转换为 std::any
+std::any Tools::json_to_any(const json& j) {
+    if (j.is_null()) {
+        return nullptr;
+    }
+    if (j.is_boolean()) {
+        return j.get<bool>();
+    }
+    if (j.is_number_integer()) {
+        return j.get<int>();
+    }
+    if (j.is_number_float()) {
+        return j.get<float>();
+    }
+    if (j.is_string()) {
+        return j.get<std::string>();
+    }
+    if (j.is_array()) {
+        // 处理数组：递归转换每个元素
+        std::vector<std::any> arr;
+        for (const auto& ele : j) {
+            arr.push_back(json_to_any(ele));
+        }
+        return arr;
+    }
+    throw std::runtime_error("Unsupported JSON type");
+}
+
+CfgType Tools::parse_json_config(const std::string& config_path) {
+    std::ifstream file(config_path);
+    auto json_cfg = json::parse(file);
+    CfgType config;
+    // 读取每个变量
+    for (auto& var : json_cfg) {
+        // 解析 name 和 value
+        std::string name;
+        std::any value;
+        for (auto& item : var.items()) {
+            if ("name" == item.key()) {
+                name = item.value();
+            } else if ("value" == item.key()) {
+                value = json_to_any(item.value());
+            }
+        }
+        config[name] = value;
+    }
+    return config;
+}
 
 bool Tools::check_gpu() {
     return true;

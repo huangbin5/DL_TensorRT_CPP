@@ -15,9 +15,8 @@ public:
     explicit SegTest(const std::unordered_map<std::string, std::any>& cfg, const std::string& exp_root = "",
                      bool save_mask = true, bool save_box = false, bool save_conf = true, bool show_result = false);
 
-    std::tuple<std::vector<std::vector<cv::Mat>>, std::vector<std::vector<cv::Rect2f>>, std::vector<std::vector<float>>>
-    get_mask(
-        const cv::Mat& bgr_image) const;
+    [[nodiscard]] std::tuple<std::vector<std::vector<cv::Mat>>, std::vector<std::vector<cv::Rect2f>>, std::vector<
+                                 std::vector<float>>> get_mask(const cv::Mat& bgr_image) const;
 
     bool infer_single(const std::string& img_name);
 
