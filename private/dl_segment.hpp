@@ -1,4 +1,4 @@
-#ifndef DL_SEGMENT_HPP
+﻿#ifndef DL_SEGMENT_HPP
 #define DL_SEGMENT_HPP
 
 #include <iostream>

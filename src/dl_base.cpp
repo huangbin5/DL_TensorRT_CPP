@@ -1,4 +1,4 @@
-#include "../include/dl_base.hpp"
+﻿#include "../include/dl_base.hpp"
 
 bool BaseResult::extractSegResult(cv::Mat& boxes, std::vector<cv::Mat>& masks) const {
     return false;

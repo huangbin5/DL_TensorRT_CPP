@@ -1,4 +1,4 @@
-#ifndef TEST_SEGMENT_HPP
+﻿#ifndef TEST_SEGMENT_HPP
 #define TEST_SEGMENT_HPP
 
 #include <iostream>
