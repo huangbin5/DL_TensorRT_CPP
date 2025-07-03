@@ -55,7 +55,7 @@ public:
 
 protected:
     std::string deploy_name;
-    std::vector<std::string> classes;
+    // std::vector<std::string> classes;
     int model_w;
     int model_h;
     int nm = 32;

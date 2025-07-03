@@ -1,4 +1,7 @@
-﻿.idea
+﻿# git rm --cached [-r] file/folder
+.idea
 cmake-build-debug
 cmake-debug
 cmake-export
+
+注意事项

@@ -36,8 +36,8 @@ bool SegDeployModel::register_status = [] {
 }();
 
 SegDeployModel::SegDeployModel(const CfgType& cfg)
-    : classes(Tools::any_to_vector<std::string>(cfg.at("classes"))),
-      model_w(any_cast<int>(cfg.at("model_w"))),
+// : classes(Tools::any_to_vector<std::string>(cfg.at("classes"))),
+    : model_w(any_cast<int>(cfg.at("model_w"))),
       model_h(any_cast<int>(cfg.at("model_h"))),
       conf(any_cast<float>(cfg.at("conf"))),
       iou(any_cast<float>(cfg.at("iou"))) {
