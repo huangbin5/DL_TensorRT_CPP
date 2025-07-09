@@ -8,9 +8,9 @@
 // 通过 EXPORT 标记的符号（类、函数、变量）会被添加到 DLL 的导出列表中
 // 允许外部程序通过 DLL 调用这些功能
 #if defined(_MSC_VER) // 比 ifdef 支持更复杂的表达式
-#define EXPORT __declspec(dllexport) // Windows
+    #define EXPORT __declspec(dllexport) // Windows
 #else
-#define EXPORT __attribute__((visibility("default"))) // Linux
+    #define EXPORT __attribute__((visibility("default"))) // Linux
 #endif
 
 

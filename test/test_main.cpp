@@ -8,8 +8,15 @@
 #include "../private/tools.hpp"
 #include "test_segment.hpp"
 
+#if defined(_MSC_VER)
+    #define IS_WINDOWS 1
+#else
+    #define IS_WINDOWS 0
+#endif
+
 
 int main() {
+    cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_SILENT);
     // const CfgType config = {
     //     {"model_path", std::string("/home/oyefish/data/eu_box_exp/exp03_0403_lvl/train6/weights/best.engine")},
     //     {"classes", std::vector<std::string>{"eu_box"}},
@@ -18,9 +25,12 @@ int main() {
     //     {"conf", 0.25f},
     //     {"iou", 0.7f},
     // };
-    const auto config = Tools::parse_json_config("../config/segment.json");
+    auto config = Tools::parse_json_config("../config/segment.json");
+    if (IS_WINDOWS) {
+        config["model_path"] = std::string("D:/AI/data/0324_test/best.engine");
+    }
     SegTest model(config,
-                  "/home/oyefish/data/eu_box/0324_test",
+                  IS_WINDOWS ? "D:/AI/data/0324_test" : "/home/oyefish/data/eu_box/0324_test",
                   true, true, true, false);
     const auto start = std::chrono::high_resolution_clock::now();
     model.infer_batch();

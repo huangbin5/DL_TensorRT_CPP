@@ -316,7 +316,7 @@ SegTensorRtModel::SegTensorRtModel(const CfgType& cfg) : SegDeployModel(cfg), lo
     output_names = {"output0", "output1"};
 
     // 读取序列化文件 todo 将读取逻模型的辑提取为一个方法
-    auto tensorrt_path = any_cast<std::string>(cfg.at("model_path"));
+    const auto tensorrt_path = any_cast<std::string>(cfg.at("model_path"));
     std::ifstream file(tensorrt_path, std::ios::binary);
     if (!file) {
         throw std::runtime_error("Failed to open TensorRT engine file");

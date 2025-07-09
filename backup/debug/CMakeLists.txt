@@ -4,13 +4,13 @@ project(DL_TensorRT_CPP)
 
 if (WIN32)
     # 设置 OpenCV 路径
-    set(OpenCV_DIR "D:/software/opencv/build")
+    set(OpenCV_DIR "D:/Programs/opencv/build")
     # 设置 CUDA 路径
     set(CUDA_DIR "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8")
     # 设置 ONNX 路径
-    set(OnnxRuntime_DIR "D:/software/onnxruntime-win-x64-gpu-1.22.0")
+    set(OnnxRuntime_DIR "D:/Programs/onnxruntime-gpu-1.22.0")
     # 设置 TensorRT 路径
-    set(TensorRT_DIR "C:/Program Files/NVIDIA GPU Computing Toolkit/TensorRT-8.6.1.6")
+    set(TensorRT_DIR "D:/Programs/TensorRT-8.6.1.6")
 else ()
     set(CUDA_DIR "/usr/local/cuda")
     set(OnnxRuntime_DIR "/home/oyefish/application/onnxruntime")
